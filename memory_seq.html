@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>זכור את הרצף!</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Heebo:wght@700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0D0D1F;
+  --surface:#16182E;
+  --panel:#1E2040;
+  --border:#2E3060;
+  --gold:#FFD54F;
+  --accent:#7C4DFF;
+  --green:#00E676;
+  --red:#FF5252;
+}
+html,body{
+  width:100%;height:100dvh;overflow:hidden;
+  background:var(--bg);
+  font-family:'Heebo',sans-serif;
+  direction:rtl;color:#E8EAF6;
+  user-select:none;-webkit-user-select:none;
+}
+body{display:grid;grid-template-rows:52px 1fr auto;}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);
+  border-bottom:2px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+}
+header h1{font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--gold);}
+.hdr-r{display:flex;align-items:center;gap:10px;}
+#level-badge{background:var(--accent);color:#fff;font-family:'Fredoka One',cursive;
+  font-size:.8rem;padding:2px 12px;border-radius:12px;}
+#score-disp{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--gold);}
+
+/* ── MAIN ── */
+main{
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:14px;padding:14px 12px;
+  overflow:hidden;
+}
+
+/* STATUS TEXT */
+#status{
+  font-family:'Fredoka One',cursive;
+  font-size:1.2rem;
+  color:#E8EAF6;
+  text-align:center;
+  min-height:1.6rem;
+  letter-spacing:.5px;
+}
+#status.green{color:var(--green);}
+#status.red{color:var(--red);}
+#status.gold{color:var(--gold);}
+
+/* SEQUENCE DISPLAY (the cards to memorize) */
+#seq-area{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  align-items:center;
+}
+
+/* A single card in the sequence */
+.seq-card{
+  display:flex;align-items:center;justify-content:center;
+  border-radius:14px;
+  border:2px solid rgba(255,255,255,.15);
+  flex-shrink:0;
+  position:relative;
+  overflow:hidden;
+  transition:transform .2s;
+}
+/* Covered = back of card */
+.seq-card.covered{
+  background:var(--panel);
+  border-color:var(--border);
+}
+.seq-card.covered::after{
+  content:'?';
+  font-family:'Fredoka One',cursive;
+  font-size:1.8rem;
+  color:var(--border);
+}
+/* flip animation */
+.seq-card.flip-out{animation:flipOut .3s ease forwards;}
+.seq-card.flip-in {animation:flipIn  .3s ease forwards;}
+@keyframes flipOut{to{transform:rotateY(90deg);opacity:0;}}
+@keyframes flipIn {from{transform:rotateY(-90deg);opacity:0;}to{transform:rotateY(0);opacity:1;}}
+
+/* ANSWER SLOTS (where player drops/taps their answer) */
+#answer-area{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  align-items:center;
+}
+.ans-slot{
+  border-radius:14px;
+  border:2.5px dashed var(--border);
+  background:rgba(255,255,255,.03);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  position:relative;
+  transition:border-color .2s,background .2s;
+  cursor:pointer;
+}
+.ans-slot.active-slot{
+  border-color:var(--accent);
+  background:rgba(124,77,255,.12);
+  box-shadow:0 0 12px rgba(124,77,255,.3);
+}
+.ans-slot.correct-slot{border-color:var(--green)!important;background:rgba(0,230,118,.1)!important;}
+.ans-slot.wrong-slot{border-color:var(--red)!important;background:rgba(255,82,82,.1)!important;
+  animation:slotShake .4s ease;}
+@keyframes slotShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+
+/* SHAPE PICKER (bottom palette) */
+#picker{
+  background:var(--surface);
+  border-top:2px solid var(--border);
+  padding:10px 12px 12px;
+  display:flex;flex-direction:column;
+  gap:8px;
+  align-items:center;
+}
+#picker-label{font-size:.72rem;font-weight:900;color:#7986CB;letter-spacing:.5px;}
+
+#shapes-row,#colors-row{
+  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+}
+
+/* Shape button */
+.shape-btn{
+  width:46px;height:46px;border-radius:10px;
+  background:var(--panel);border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:transform .1s,border-color .15s;
+  flex-shrink:0;
+}
+.shape-btn:active{transform:scale(.9);}
+.shape-btn.selected{border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.3);}
+
+/* Color dot */
+.color-dot{
+  width:32px;height:32px;border-radius:50%;
+  border:3px solid transparent;
+  cursor:pointer;transition:transform .1s,border-color .15s;
+  flex-shrink:0;
+}
+.color-dot:active{transform:scale(.88);}
+.color-dot.selected{border-color:#fff;transform:scale(1.1);}
+
+/* Action button */
+#action-btn{
+  background:var(--accent);color:#fff;border:none;
+  border-radius:14px;padding:10px 28px;
+  font-family:'Fredoka One',cursive;font-size:1.1rem;
+  cursor:pointer;box-shadow:0 4px 0 #4A00E0;
+  transition:transform .1s;
+  display:none;
+}
+#action-btn.show{display:block;}
+#action-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #4A00E0;}
+
+/* Overlay for "memorize" countdown */
+#countdown{
+  position:fixed;inset:0;
+  background:rgba(13,13,31,.85);
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:500;
+}
+#countdown.show{display:flex;}
+#cd-num{
+  font-family:'Fredoka One',cursive;
+  font-size:5rem;color:var(--gold);
+  animation:cdPulse .9s ease infinite;
+}
+#cd-label{font-size:1.1rem;font-weight:900;color:#90CAF9;margin-top:8px;}
+@keyframes cdPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}
+
+/* Celebration */
+#cel{position:fixed;inset:0;background:rgba(13,13,31,.97);
+  display:none;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+#cel.show{display:flex;animation:popIn .4s ease;}
+@keyframes popIn{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+#cel .big{font-size:4rem;margin-bottom:8px;}
+#cel h2{font-family:'Fredoka One',cursive;font-size:2rem;color:var(--gold);}
+#cel h3{font-family:'Fredoka One',cursive;font-size:1.35rem;color:#FF9800;margin-top:4px;}
+#cel p{font-weight:700;color:#7986CB;margin-top:8px;}
+#rst-btn{margin-top:16px;background:var(--accent);color:#fff;border:none;
+  border-radius:14px;padding:12px 28px;font-size:1rem;font-weight:900;
+  cursor:pointer;font-family:'Heebo',sans-serif;box-shadow:0 4px 0 #4A00E0;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧠 זכור את הרצף!</h1>
+  <div class="hdr-r">
+    <div id="level-badge">שלב 1</div>
+    <div id="score-disp">⭐ 0</div>
+  </div>
+</header>
+
+<main>
+  <div id="status">מוכן?</div>
+  <div id="seq-area"></div>
+  <div id="answer-area"></div>
+  <button id="action-btn" onclick="onAction()"></button>
+</main>
+
+<div id="picker">
+  <div id="picker-label">בחר צורה וצבע ← לחץ על המשבצת</div>
+  <div id="shapes-row"></div>
+  <div id="colors-row"></div>
+</div>
+
+<div id="countdown">
+  <div id="cd-num">3</div>
+  <div id="cd-label">שנות לזכור…</div>
+</div>
+
+<div id="cel">
+  <div class="big">🏆</div>
+  <h2>יופי עילי!</h2>
+  <h3>אתה אלוף! 🥇</h3>
+  <p id="cel-txt"></p>
+  <button id="rst-btn" onclick="restart()">🔄 שחק שוב!</button>
+</div>
+
+<script>
+/* ══════════════════════════════
+   SHAPES & COLORS
+══════════════════════════════ */
+const SHAPES = [
+  {id:'circle',  svg:'<circle cx="18" cy="18" r="15"/>'},
+  {id:'square',  svg:'<rect x="3" y="3" width="30" height="30" rx="3"/>'},
+  {id:'triangle',svg:'<polygon points="18,2 34,34 2,34"/>'},
+  {id:'star',    svg:'<polygon points="18,2 22,13 34,13 24,21 28,33 18,25 8,33 12,21 2,13 14,13"/>'},
+  {id:'heart',   svg:'<path d="M18 32 C18 32 3 22 3 12 C3 7 7 3 12 3 C15 3 17 5 18 7 C19 5 21 3 24 3 C29 3 33 7 33 12 C33 22 18 32 18 32Z"/>'},
+  {id:'diamond', svg:'<polygon points="18,2 34,18 18,34 2,18"/>'},
+];
+
+const COLORS = [
+  {id:'red',    hex:'#FF5252'},
+  {id:'orange', hex:'#FF9800'},
+  {id:'yellow', hex:'#FFD54F'},
+  {id:'green',  hex:'#00E676'},
+  {id:'blue',   hex:'#448AFF'},
+  {id:'purple', hex:'#E040FB'},
+  {id:'pink',   hex:'#FF80AB'},
+  {id:'cyan',   hex:'#18FFFF'},
+];
+
+/* ══════════════════════════════
+   GAME STATE
+══════════════════════════════ */
+const LEVELS = [2,3,3,4,4,5,5,6];  // sequence length per level
+let level=0, score=0;
+let sequence=[];       // [{shape,color}]
+let answers=[];        // player's answers so far
+let currentSlot=0;     // which slot player is filling
+let selectedShape=null, selectedColor=null;
+let phase='idle';      // 'show'|'recall'|'result'
+
+/* ══════════════════════════════
+   SOUNDS
+══════════════════════════════ */
+function beep(freq,dur=.18,type='sine'){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(.3,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+dur);
+    o.start();o.stop(ctx.currentTime+dur);
+    setTimeout(()=>ctx.close(),(dur+.1)*1000);
+  }catch(e){}
+}
+const playOk   =()=>beep(880,.15);
+const playWrong=()=>beep(180,.3,'sawtooth');
+const playDone =()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.25),i*120));
+
+/* ══════════════════════════════
+   BUILD PICKER
+══════════════════════════════ */
+function buildPicker(){
+  const sr=document.getElementById('shapes-row');
+  sr.innerHTML='';
+  SHAPES.forEach(sh=>{
+    const btn=document.createElement('div');
+    btn.className='shape-btn';btn.dataset.id=sh.id;
+    btn.innerHTML=`<svg width="36" height="36" viewBox="0 0 36 36">
+      <g fill="${selectedColor?.hex||'#7986CB'}">${sh.svg}</g></svg>`;
+    btn.onclick=()=>{selectedShape=sh;updatePicker();tryFillSlot();};
+    sr.appendChild(btn);
+  });
+  const cr=document.getElementById('colors-row');
+  cr.innerHTML='';
+  COLORS.forEach(c=>{
+    const dot=document.createElement('div');
+    dot.className='color-dot';
+    dot.style.background=c.hex;dot.dataset.id=c.id;
+    dot.onclick=()=>{selectedColor=c;updatePicker();tryFillSlot();};
+    cr.appendChild(dot);
+  });
+}
+function updatePicker(){
+  document.querySelectorAll('.shape-btn').forEach(b=>{
+    b.classList.toggle('selected',b.dataset.id===selectedShape?.id);
+    // recolor SVG fill
+    const path=b.querySelector('g');
+    if(path)path.setAttribute('fill',selectedColor?.hex||'#7986CB');
+  });
+  document.querySelectorAll('.color-dot').forEach(d=>{
+    d.classList.toggle('selected',d.dataset.id===selectedColor?.id);
+  });
+}
+
+/* ══════════════════════════════
+   GENERATE SEQUENCE
+══════════════════════════════ */
+function genSequence(len){
+  const seq=[];
+  for(let i=0;i<len;i++){
+    const sh=SHAPES[Math.floor(Math.random()*SHAPES.length)];
+    const co=COLORS[Math.floor(Math.random()*COLORS.length)];
+    seq.push({shape:sh,color:co});
+  }
+  return seq;
+}
+
+/* ══════════════════════════════
+   CARD SIZE
+══════════════════════════════ */
+function cardSize(n){
+  if(n<=3)return 88;
+  if(n<=4)return 76;
+  if(n<=5)return 66;
+  return 56;
+}
+
+/* ══════════════════════════════
+   DRAW SEQUENCE (visible)
+══════════════════════════════ */
+function drawSequence(seq,covered=false){
+  const area=document.getElementById('seq-area');
+  area.innerHTML='';
+  const sz=cardSize(seq.length);
+  seq.forEach((item,i)=>{
+    const card=document.createElement('div');
+    card.className='seq-card'+(covered?' covered':'');
+    card.style.width=sz+'px';card.style.height=sz+'px';
+    if(!covered){
+      card.style.background=item.color.hex+'22';
+      card.style.borderColor=item.color.hex+'88';
+      card.innerHTML=`<svg width="${sz*.7}" height="${sz*.7}" viewBox="0 0 36 36">
+        <g fill="${item.color.hex}">${item.shape.svg}</g>
+      </svg>`;
+    }
+    area.appendChild(card);
+  });
+}
+
+/* ══════════════════════════════
+   DRAW ANSWER SLOTS
+══════════════════════════════ */
+function drawAnswerSlots(n){
+  const area=document.getElementById('answer-area');
+  area.innerHTML='';
+  const sz=cardSize(n);
+  for(let i=0;i<n;i++){
+    const slot=document.createElement('div');
+    slot.className='ans-slot'+(i===0?' active-slot':'');
+    slot.style.width=sz+'px';slot.style.height=sz+'px';
+    slot.dataset.idx=i;
+    slot.onclick=()=>onSlotClick(i);
+    area.appendChild(slot);
+  }
+}
+
+function onSlotClick(idx){
+  if(phase!=='recall')return;
+  // move active to clicked slot (allow correction)
+  currentSlot=idx;
+  document.querySelectorAll('.ans-slot').forEach((s,i)=>{
+    s.classList.toggle('active-slot',i===idx);
+  });
+}
+
+/* ══════════════════════════════
+   TRY TO FILL CURRENT SLOT
+══════════════════════════════ */
+function tryFillSlot(){
+  if(phase!=='recall')return;
+  if(!selectedShape||!selectedColor)return;
+
+  const slots=document.querySelectorAll('.ans-slot');
+  if(currentSlot>=slots.length)return;
+
+  const slot=slots[currentSlot];
+  const sz=parseInt(slot.style.width);
+
+  // Place the shape in the slot (tentative)
+  slot.innerHTML=`<svg width="${sz*.7}" height="${sz*.7}" viewBox="0 0 36 36">
+    <g fill="${selectedColor.hex}">${selectedShape.svg}</g>
+  </svg>`;
+  slot.dataset.shape=selectedShape.id;
+  slot.dataset.color=selectedColor.id;
+  slot.classList.remove('active-slot');
+
+  // Record answer
+  answers[currentSlot]={shape:selectedShape,color:selectedColor};
+
+  // Move to next empty slot
+  let next=-1;
+  for(let i=0;i<slots.length;i++){
+    if(!slots[i].dataset.shape){next=i;break;}
+  }
+  if(next>=0){
+    currentSlot=next;
+    slots[next].classList.add('active-slot');
+  } else {
+    // All filled — show check button
+    currentSlot=slots.length;
+    document.getElementById('action-btn').textContent='בדוק ✓';
+    document.getElementById('action-btn').className='show';
+  }
+}
+
+/* ══════════════════════════════
+   PHASE: SHOW
+══════════════════════════════ */
+function phaseShow(){
+  phase='show';
+  const len=LEVELS[Math.min(level,LEVELS.length-1)];
+  sequence=genSequence(len);
+  answers=new Array(len).fill(null);
+  currentSlot=0;
+
+  document.getElementById('level-badge').textContent=`שלב ${level+1}`;
+  setStatus('👀 תסתכל ותזכור!','gold');
+  drawSequence(sequence,false);
+  document.getElementById('answer-area').innerHTML='';
+  document.getElementById('action-btn').className='';
+
+  // Show for (2+len*0.6) seconds then cover
+  const showTime=(2+len*.6)*1000;
+  setTimeout(()=>startCountdown(3),showTime);
+}
+
+/* ══════════════════════════════
+   COUNTDOWN BEFORE COVERING
+══════════════════════════════ */
+function startCountdown(n){
+  const cd=document.getElementById('countdown');
+  const num=document.getElementById('cd-num');
+  cd.classList.add('show');
+  num.textContent=n;
+  beep(440,.15);
+  if(n>1){
+    setTimeout(()=>startCountdown(n-1),1000);
+  } else {
+    setTimeout(()=>{
+      cd.classList.remove('show');
+      phaseRecall();
+    },1000);
+  }
+}
+
+/* ══════════════════════════════
+   PHASE: RECALL
+══════════════════════════════ */
+function phaseRecall(){
+  phase='recall';
+  // Cover the sequence
+  drawSequence(sequence,true);
+  // Draw answer slots
+  drawAnswerSlots(sequence.length);
+  setStatus('🧠 כתוב את הרצף מהזיכרון!','');
+  // Reset picker selection
+  selectedShape=null;selectedColor=null;updatePicker();
+}
+
+/* ══════════════════════════════
+   CHECK ANSWERS
+══════════════════════════════ */
+function onAction(){
+  if(phase==='result'){phaseShow();return;}
+  if(phase==='recall'){checkAnswers();return;}
+  if(phase==='idle'){phaseShow();return;}
+}
+
+function checkAnswers(){
+  phase='result';
+  const slots=document.querySelectorAll('.ans-slot');
+  let allCorrect=true;
+  let correctCount=0;
+
+  sequence.forEach((item,i)=>{
+    const ans=answers[i];
+    const slot=slots[i];
+    slot.classList.remove('active-slot');
+    if(ans&&ans.shape.id===item.shape.id&&ans.color.id===item.color.id){
+      slot.classList.add('correct-slot');
+      correctCount++;
+    } else {
+      slot.classList.add('wrong-slot');
+      allCorrect=false;
+      // Show what was correct
+      setTimeout(()=>{
+        const sz=parseInt(slot.style.width);
+        slot.innerHTML=`<svg width="${sz*.7}" height="${sz*.7}" viewBox="0 0 36 36">
+          <g fill="${item.color.hex}">${item.shape.svg}</g>
+        </svg>`;
+      },500);
+    }
+  });
+
+  // Uncover sequence for comparison
+  setTimeout(()=>{
+    drawSequence(sequence,false);
+  },300);
+
+  if(allCorrect){
+    playDone();
+    score+=sequence.length;
+    document.getElementById('score-disp').textContent=`⭐ ${score}`;
+    setStatus(`🎉 מושלם! ${sequence.length}/${sequence.length} נכון!`,'green');
+    setTimeout(()=>{
+      level++;
+      if(level>=LEVELS.length+3){
+        // Game over!
+        document.getElementById('cel-txt').textContent=`אספת ${score} כוכבים! 🌟`;
+        document.getElementById('cel').className='show';
+      } else {
+        document.getElementById('action-btn').textContent='הרצף הבא →';
+        document.getElementById('action-btn').className='show';
+      }
+    },1800);
+  } else {
+    playWrong();
+    const pts=Math.max(0,correctCount);
+    score+=pts;
+    document.getElementById('score-disp').textContent=`⭐ ${score}`;
+    setStatus(`🤔 ${correctCount}/${sequence.length} נכון — נסה שוב!`,'red');
+    document.getElementById('action-btn').textContent='נסה שוב ↺';
+    document.getElementById('action-btn').className='show';
+  }
+}
+
+/* ══════════════════════════════
+   HELPERS
+══════════════════════════════ */
+function setStatus(txt,cls=''){
+  const el=document.getElementById('status');
+  el.textContent=txt;el.className=cls;
+}
+
+function restart(){
+  level=0;score=0;
+  document.getElementById('score-disp').textContent='⭐ 0';
+  document.getElementById('cel').className='';
+  phase='idle';
+  setStatus('מוכן?','');
+  document.getElementById('seq-area').innerHTML='';
+  document.getElementById('answer-area').innerHTML='';
+  document.getElementById('action-btn').textContent='התחל!';
+  document.getElementById('action-btn').className='show';
+}
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+buildPicker();
+document.getElementById('action-btn').textContent='התחל! 🚀';
+document.getElementById('action-btn').className='show';
+phase='idle';
+setStatus('לחץ התחל ותזכור את הרצף!','gold');
+</script>
+</body>
+</html>
